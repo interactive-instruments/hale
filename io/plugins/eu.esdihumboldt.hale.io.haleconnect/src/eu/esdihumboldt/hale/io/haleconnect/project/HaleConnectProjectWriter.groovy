@@ -24,6 +24,7 @@ import eu.esdihumboldt.hale.common.core.HalePlatform;
 import eu.esdihumboldt.hale.common.core.io.IOProviderConfigurationException;
 import eu.esdihumboldt.hale.common.core.io.ProgressIndicator;
 import eu.esdihumboldt.hale.common.core.io.Value;
+import eu.esdihumboldt.hale.common.core.io.project.ProjectWriter.ProjectWriterMode
 import eu.esdihumboldt.hale.common.core.io.project.impl.ArchiveProjectWriter;
 import eu.esdihumboldt.hale.common.core.io.project.model.Project;
 import eu.esdihumboldt.hale.common.core.io.report.IOReport;
@@ -277,6 +278,15 @@ public class HaleConnectProjectWriter extends ArchiveProjectWriter {
 	@Override
 	public ProjectWriterMode getLastWriterMode() {
 		return writerMode;
+	}
+
+	/**
+	 * Set the writer mode to be used in the next operation
+	 * 
+	 * @param mode Writer mode to use
+	 */
+	public void setWriterMode(ProjectWriterMode mode) {
+		this.writerMode = mode;
 	}
 
 	/**
