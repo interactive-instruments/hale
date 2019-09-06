@@ -61,20 +61,20 @@ class CustomFunctionAdvToGeographicalNameSimple extends FormattedStringHandler {
 		final ListMultimap<String, ParameterValue> parameters = propertyCell
 				.getTransformationParameters();
 
-		final List<QName> geographicalNamePath = buildPath(targetProperty.getDefinition()
-				.getPropertyPath());
+		final List<QName> geographicalNamePath = buildPath(
+				targetProperty.getDefinition().getPropertyPath());
 
-		final MappingValue mappingValue = new MappingValueBuilder()
-				.column()
+		final MappingValue mappingValue = new MappingValueBuilder().column()
 				.qualifiedTargetPath(
 						addToPath(geographicalNamePath, "spelling", "SpellingOfName", "text"))
 				.value(propertyName(XtraServerMappingUtils.getSourceProperty(propertyCell)
-						.getDefinition().getPropertyPath())).build();
+						.getDefinition().getPropertyPath()))
+				.build();
 
 		final List<MappingValue> constantValues = new ArrayList<MappingValue>();
 
-		constantValues.add(createConstantValueMapping(addToPath(geographicalNamePath, "language"),
-				"deu"));
+		constantValues.add(
+				createConstantValueMapping(addToPath(geographicalNamePath, "language"), "deu"));
 
 		final String nativenessParam = getSingleProperty(parameters, "nativeness");
 		setCodeListValue(addToPath(geographicalNamePath, "nativeness"), "NativenessValue",
@@ -104,10 +104,9 @@ class CustomFunctionAdvToGeographicalNameSimple extends FormattedStringHandler {
 		constantValues.add(createConstantValueMapping(
 				addToPath(geographicalNamePath, "sourceOfName"), sourceOfName));
 
-		constantValues
-				.add(createConstantValueMapping(
-						addToPath(XSI_NS, addToPath(geographicalNamePath, "pronunciation"), "@nil"),
-						"true"));
+		constantValues.add(createConstantValueMapping(
+				addToPath(XSI_NS, addToPath(geographicalNamePath, "pronunciation"), "@nil"),
+				"true"));
 		constantValues.add(createConstantValueMapping(
 				addToPath("", addToPath(geographicalNamePath, "pronunciation"), "@nilReason"),
 				"other:unpopulated"));
@@ -117,14 +116,15 @@ class CustomFunctionAdvToGeographicalNameSimple extends FormattedStringHandler {
 
 		final String tableName = ((CellParentWrapper) propertyCell).getTableName();
 
-		constantValues.forEach(c -> mappingContext.addValueMappingToTable(targetProperty, c,
-				tableName));
+		constantValues
+				.forEach(c -> mappingContext.addValueMappingToTable(targetProperty, c, tableName));
 
 		return Optional.of(mappingValue);
 	}
 
 	private void setCodeListValue(final List<QName> propertyPath, final String codeListValue,
-			final String code, final String fallbackValue, final List<MappingValue> constantValues) {
+			final String code, final String fallbackValue,
+			final List<MappingValue> constantValues) {
 		if (code == null) {
 			// default if not specified
 			constantValues.add(createConstantValueMapping(
@@ -160,14 +160,15 @@ class CustomFunctionAdvToGeographicalNameSimple extends FormattedStringHandler {
 
 	private List<QName> addToPath(final String namespaceUri, final List<QName> basePath,
 			final String... elements) {
-		return Stream.concat(basePath.stream(),
-				Arrays.stream(elements).map(element -> new QName(namespaceUri, element))).collect(
-				Collectors.toList());
+		return Stream
+				.concat(basePath.stream(),
+						Arrays.stream(elements).map(element -> new QName(namespaceUri, element)))
+				.collect(Collectors.toList());
 	}
 
 	private MappingValue createConstantValueMapping(final List<QName> target, final String value) {
 		return new MappingValueBuilder().constant().qualifiedTargetPath(target).value(value)
-				.build();
+				.significantForEmptiness(false).build();
 	}
 
 }

@@ -76,7 +76,10 @@ class AssignHandler extends AbstractPropertyTransformationHandler {
 		}
 
 		final MappingValue mappingValue = new MappingValueBuilder().constant()
-				.qualifiedTargetPath(path).value(mappingContext.resolveProjectVars(value)).build();
+				.qualifiedTargetPath(path).value(mappingContext.resolveProjectVars(value))
+				.significantForEmptiness(
+						!propertyCell.getTransformationIdentifier().equals(AssignFunction.ID_BOUND))
+				.build();
 
 		return Optional.of(mappingValue);
 	}

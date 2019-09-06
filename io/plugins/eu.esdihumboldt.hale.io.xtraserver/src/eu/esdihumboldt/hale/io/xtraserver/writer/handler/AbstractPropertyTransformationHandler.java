@@ -81,8 +81,8 @@ abstract class AbstractPropertyTransformationHandler implements PropertyTransfor
 		return path.get(path.size() - 1).getChild().getName().getLocalPart();
 	}
 
-	protected static String getSingleProperty(
-			final ListMultimap<String, ParameterValue> parameters, final String name) {
+	protected static String getSingleProperty(final ListMultimap<String, ParameterValue> parameters,
+			final String name) {
 		if (parameters != null) {
 			final List<ParameterValue> parameterValues = parameters.get(name);
 			if (parameterValues != null && !parameterValues.isEmpty()) {
@@ -127,9 +127,9 @@ abstract class AbstractPropertyTransformationHandler implements PropertyTransfor
 		if (targetProperty.getDefinition().getPropertyPath().isEmpty()) {
 			return null;
 		}
-
+		int refElemIndex = Math.max(0, targetProperty.getDefinition().getPropertyPath().size() - 2);
 		final ChildDefinition<?> firstChild = targetProperty.getDefinition().getPropertyPath()
-				.get(0).getChild();
+				.get(refElemIndex).getChild();
 		if (!(firstChild instanceof PropertyDefinition)) {
 			return null;
 		}
@@ -158,10 +158,9 @@ abstract class AbstractPropertyTransformationHandler implements PropertyTransfor
 				|| (this instanceof SqlExpressionHandler)
 				|| (this instanceof FormattedStringHandler)))) {
 			CellParentWrapper cellParentWrapper = (CellParentWrapper) propertyCell;
-			mappingContext
-					.getReporter()
-					.warn("Cell could not be exported, source or target property is not set (Table: {0}, Source: {1}, Target: {2})",
-							cellParentWrapper.getTableName(), sourceProperty, targetProperty);
+			mappingContext.getReporter().warn(
+					"Cell could not be exported, source or target property is not set (Table: {0}, Source: {1}, Target: {2})",
+					cellParentWrapper.getTableName(), sourceProperty, targetProperty);
 			return null;
 		}
 

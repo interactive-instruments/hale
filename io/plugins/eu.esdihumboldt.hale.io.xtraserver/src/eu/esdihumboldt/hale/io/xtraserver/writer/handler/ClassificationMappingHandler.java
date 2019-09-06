@@ -84,9 +84,13 @@ class ClassificationMappingHandler extends AbstractPropertyTransformationHandler
 			final Iterator<Value> it = valueMap.keySet().iterator();
 			while (it.hasNext()) {
 				final Value sourceValue = it.next();
-				final String targetValueStr = '\'' + valueMap.get(sourceValue).as(String.class) + '\'';
+				final String targetValueStr = '\'' + valueMap.get(sourceValue).as(String.class)
+						+ '\'';
+				String sourceValueStr = sourceValue.as(String.class);
+				sourceValueStr = "true".equals(sourceValueStr) ? "t" : sourceValueStr;
+				sourceValueStr = "false".equals(sourceValueStr) ? "f" : sourceValueStr;
 
-				mappingValue.keyValue(sourceValue.as(String.class), targetValueStr);
+				mappingValue.keyValue(sourceValueStr, targetValueStr);
 			}
 		}
 		else {
