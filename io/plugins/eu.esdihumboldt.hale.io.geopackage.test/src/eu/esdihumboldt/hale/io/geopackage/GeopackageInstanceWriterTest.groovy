@@ -28,13 +28,14 @@ import javax.xml.namespace.QName
 
 import org.junit.Test
 
-import com.vividsolutions.jts.geom.Geometry
-import com.vividsolutions.jts.geom.Point
+import org.locationtech.jts.geom.Geometry
+import org.locationtech.jts.geom.Point
 
 import eu.esdihumboldt.cst.functions.geometric.GeometryHelperFunctions
 import eu.esdihumboldt.hale.common.core.io.impl.LogProgressIndicator
 import eu.esdihumboldt.hale.common.core.io.report.IOReport
 import eu.esdihumboldt.hale.common.core.io.supplier.FileIOSupplier
+import eu.esdihumboldt.hale.common.instance.geometry.impl.CodeDefinition
 import eu.esdihumboldt.hale.common.instance.groovy.InstanceBuilder
 import eu.esdihumboldt.hale.common.instance.model.Instance
 import eu.esdihumboldt.hale.common.instance.model.InstanceCollection
@@ -61,7 +62,9 @@ class GeopackageInstanceWriterTest {
 	 * Write an instance collection to a GeoPackage file.
 	 */
 	@CompileStatic
-	static IOReport writeInstances(File file, Schema schema, InstanceCollection instances) {
+	static IOReport writeInstances(File file, Schema schema, InstanceCollection instances,
+			Consumer<GeopackageInstanceWriter> configurator = null) {
+
 		GeopackageInstanceWriter writer = new GeopackageInstanceWriter()
 
 		writer.setTarget(new FileIOSupplier(file))
@@ -69,6 +72,10 @@ class GeopackageInstanceWriterTest {
 		ss.addSchema(schema)
 		writer.setTargetSchema(ss)
 		writer.setInstances(instances)
+
+		if (configurator != null) {
+			configurator.accept(writer)
+		}
 
 		IOReport report = writer.execute(new LogProgressIndicator())
 
@@ -79,11 +86,13 @@ class GeopackageInstanceWriterTest {
 	}
 
 	@CompileStatic
-	static void withNewGeopackage(Schema schema, InstanceCollection instances, Consumer<File> handler) {
+	static void withNewGeopackage(Schema schema, InstanceCollection instances, Consumer<File> handler,
+			Consumer<GeopackageInstanceWriter> configurator = null) {
+
 		Path tmpFile = Files.createTempFile('new', '.gpkg')
 		try {
 			println "Temporary file is $tmpFile"
-			writeInstances(tmpFile.toFile(), schema, instances)
+			writeInstances(tmpFile.toFile(), schema, instances, configurator)
 			handler.accept(tmpFile.toFile())
 		} finally {
 			Files.delete(tmpFile)
@@ -162,6 +171,58 @@ class GeopackageInstanceWriterTest {
 			assertEquals(3, num)
 			assertEquals(2, abcCount)
 			assertEquals(1, attrCount)
+		}
+	}
+
+	@Test
+	void testWriteBigNumbers() {
+		Schema schema = new SchemaBuilder().schema {
+			abc {
+				a(BigInteger)
+				b(BigDecimal)
+			}
+		}
+
+		InstanceCollection instances = new InstanceBuilder(types: schema).createCollection {
+			abc {
+				a(new BigInteger('123'))
+				b(new BigDecimal('1.23'))
+			}
+
+			abc {
+				a(new BigInteger('1' + Long.MAX_VALUE))
+				b(new BigDecimal('1098491071975459529.6201509049614540479'))
+			}
+		}
+
+		withNewGeopackage(schema, instances) { file ->
+			// load instances again and test
+			def loaded = GeopackageInstanceReaderTest.loadInstances(file)
+
+			// expect 2 instances
+			assertEquals(2, loaded.size())
+
+			int num = 0
+			loaded.iterator().withCloseable {
+				while (it.hasNext()) {
+					Instance inst = it.next()
+					num++
+
+					// test instance
+					def typeName = inst.getDefinition().getName().getLocalPart()
+					switch (typeName) {
+						case 'abc':
+							assert inst.p.a.value() instanceof Long
+							assert inst.p.b.value() instanceof String
+							break
+						default:
+							throw new IllegalStateException("Unexpected type $typeName")
+					}
+				}
+			}
+
+			// two instances were loaded
+			assertEquals(2, num)
 		}
 	}
 
@@ -389,6 +450,77 @@ class GeopackageInstanceWriterTest {
 
 			// instances were loaded
 			assertEquals(1, num)
+		}
+	}
+
+	@Test
+	void testWriteFeaturesTargetCRS() {
+		Schema schema = new SchemaBuilder().schema {
+			city {
+				name(String)
+				population(Integer)
+				location(GeometryProperty)
+			}
+		}
+
+		InstanceCollection instances = new InstanceBuilder(types: schema).createCollection {
+			city {
+				name 'Darmstadt'
+				population 158254
+				location( createGeometry('POINT(49.872833 8.651222)', 4326) )
+			}
+
+			city {
+				name 'München'
+				population 1471508
+				location( createGeometry('POINT(48.137222 11.575556)', 4326) )
+			}
+		}
+
+		withNewGeopackage(schema, instances) { file ->
+			// load instances again and test
+			def loaded = GeopackageInstanceReaderTest.loadInstances(file)
+
+			// expect 2 instances
+			assertEquals(2, loaded.size())
+
+			int num = 0
+			loaded.iterator().withCloseable {
+				while (it.hasNext()) {
+					Instance inst = it.next()
+					num++
+
+					// test instance
+					def typeName = inst.getDefinition().getName().getLocalPart()
+					assert typeName == 'city'
+					def geom = inst.p.location.value()
+					assert geom
+					assert geom instanceof GeometryProperty
+					def crs = geom.getCRSDefinition()
+					assert crs
+					assert crs instanceof CodeDefinition
+					assert crs.code == 'EPSG:25832'
+					def jts = geom.geometry
+					assert jts instanceof Point
+					def name = inst.p.name.value()
+					assert name
+					switch (name) {
+						case 'Darmstadt':
+							assert inst.p.population.value() == 158254
+							break
+						case 'München':
+							assert inst.p.population.value() == 1471508
+							break
+						default:
+							throw new IllegalStateException("Unexpected type $typeName")
+					}
+				}
+			}
+
+			// instances were loaded
+			assertEquals(2, num)
+		} { GeopackageInstanceWriter writer ->
+			writer.setTargetCRS(new CodeDefinition('EPSG:25832'))
 		}
 	}
 }

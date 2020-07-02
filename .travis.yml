@@ -2,7 +2,11 @@
 language: java
 jdk: openjdk8
 sudo: required
-dist: xenial
+dist: bionic
+cache:
+  directories:
+    - $HOME/.m2
+    - $HOME/.gradle
 services:
   - docker
 addons:
@@ -18,6 +22,8 @@ stages:
   - name: integration
     if: (branch = master || branch = release) && type != pull_request
   - name: build
+    if: (branch = master || branch = release) && type != pull_request
+  - name: deploy
     if: (branch = master || branch = release) && type != pull_request
 env:
   global:
@@ -69,8 +75,8 @@ jobs:
       deploy:
         skip_cleanup: true
         provider: s3
-        access_key_id: ${AWS_ACCESS_KEY}
-        secret_access_key: ${AWS_SECRET_KEY}
+        access_key_id: ${AWS_ACCESS_KEY_ID}
+        secret_access_key: ${AWS_SECRET_ACCESS_KEY}
         bucket: ${AWS_S3_BUCKET}
         region: ${AWS_S3_REGION}
         upload-dir: ${AWS_S3_BUCKET_TARGET_PATH}/${TRAVIS_BUILD_NUMBER}
@@ -93,12 +99,6 @@ jobs:
         # genisoimage is required for creating the dmg image
         - sudo apt install -y genisoimage    
     - <<: *build-hs
-      env:
-        - PLATFORM=linux PRODUCT=HALE ARCH=x86
-    - <<: *build-hs
-      env:
-        - PLATFORM=windows PRODUCT=HALE ARCH=x86
-    - <<: *build-hs
       if: branch = master
       env:
         - PLATFORM=linux PRODUCT=Infocenter ARCH=x86_64
@@ -106,3 +106,10 @@ jobs:
       if: branch = release
       env:
         - PLATFORM=linux PRODUCT=Infocenter ARCH=x86_64 ADDITIONAL_FLAGS="--publish --latest"
+    - stage: deploy
+      before_install:
+        - pip install awscli
+      script:
+        - cd build && ./upload-site.sh
+#    - stage: deploy
+#        - cd build && ./build.sh deployArtifacts
